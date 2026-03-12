@@ -1,114 +1,163 @@
-# Import library to fetch stock market data
+# Import the yfinance library to download stock market data
 import yfinance as yf
 
-# Import library to create charts and visualizations
-import matplotlib.pyplot as plt
-
-# Import pandas for data analysis and calculations
+# Import pandas library for data manipulation and analysis
 import pandas as pd
 
+# Import matplotlib library for creating graphs
+import matplotlib.pyplot as plt
 
-# Define the stock symbol we want to analyze
-ticker_symbol = "NVDA"
 
-# Create a stock object from yfinance
+# Define the stock ticker symbol we want to analyze
+ticker_symbol = "META"
+
+# Create a stock object using yfinance for the selected company
 stock = yf.Ticker(ticker_symbol)
+
+# Retrieve general company information from Yahoo Finance
+info = stock.info
+
+
+# Print a section header for company information
+print("\n--- COMPANY INFORMATION ---")
+
+# Print the full company name
+print("Company Name:", info.get("longName","N/A"))
+
+# Print the sector the company belongs to
+print("Sector:", info.get("sector","N/A"))
+
+# Print the industry category of the company
+print("Industry:", info.get("industry","N/A"))
+
+# Print the official website of the company
+print("Website:", info.get("website","N/A"))
+
+# Print company description header
+print("\nAbout the Company:")
+
+# Print a short description of what the company does
+print(info.get("longBusinessSummary","No description available"))
+
 
 # Download historical stock data for the last 3 months
 data = stock.history(period="3mo")
 
-# Print the first few rows of the dataset
-print("\nStock Data Sample:\n", data.head())
+# Display first few rows of the stock dataset
+print("\nStock Data Sample:\n")
+print(data.head())
 
 
-# Extract the closing prices column
+# Extract only the closing price column from the dataset
 closing_prices = data["Close"]
 
-# Calculate the first price in the dataset
-first_price = closing_prices.iloc[0]
+# Get the first closing price in the dataset
+first_price = float(closing_prices.iloc[0])
 
-# Calculate the most recent price
-latest_price = closing_prices.iloc[-1]
+# Get the most recent closing price
+latest_price = float(closing_prices.iloc[-1])
 
-# Calculate the absolute price change
+# Calculate how much the stock price changed
 price_change = latest_price - first_price
 
-# Calculate percentage change over the period
+# Calculate percentage change of the stock price
 percent_change = (price_change / first_price) * 100
 
 
-# Find the highest price in the dataset
-highest_price = data["High"].max()
+# Find the highest price during the selected time period
+highest_price = float(data["High"].max())
 
-# Find the lowest price in the dataset
-lowest_price = data["Low"].min()
+# Find the lowest price during the selected time period
+lowest_price = float(data["Low"].min())
 
-# Calculate average closing price
-average_price = closing_prices.mean()
+# Calculate the average closing price
+average_price = float(closing_prices.mean())
 
-# Calculate standard deviation to measure volatility
-volatility = closing_prices.std()
+# Calculate volatility using standard deviation
+volatility = float(closing_prices.std())
 
 
-# Print a summary report of the stock analysis
+# Print section header for stock analysis
 print("\n--- STOCK ANALYSIS REPORT ---")
 
-# Display the stock ticker symbol
+# Print stock ticker symbol
 print("Stock:", ticker_symbol)
 
-# Display the latest stock price
+# Print the most recent price
 print("Latest Price:", round(latest_price,2))
 
-# Display the price change during the selected period
+# Print the total price change
 print("Price Change:", round(price_change,2))
 
-# Display percentage price movement
+# Print percentage price movement
 print("Percent Change:", round(percent_change,2), "%")
 
-# Display the highest recorded price
+# Print highest price reached
 print("Highest Price:", round(highest_price,2))
 
-# Display the lowest recorded price
+# Print lowest price reached
 print("Lowest Price:", round(lowest_price,2))
 
-# Display the average closing price
+# Print average closing price
 print("Average Closing Price:", round(average_price,2))
 
-# Display stock volatility
+# Print stock volatility
 print("Volatility (Std Dev):", round(volatility,2))
 
 
-# Calculate a 20-day moving average for trend analysis
+# Calculate 20-day moving average for short-term trend analysis
 data["MA20"] = closing_prices.rolling(window=20).mean()
 
-# Calculate a 50-day moving average for long-term trend
+# Calculate 50-day moving average for medium-term trend
 data["MA50"] = closing_prices.rolling(window=50).mean()
 
 
-# Create a chart showing stock prices and moving averages
-plt.figure(figsize=(10,5))
+# Create a figure for plotting graphs
+plt.figure(figsize=(12,6))
 
-# Plot the actual closing prices
+# Plot actual stock closing price line
 plt.plot(data.index, data["Close"], label="Close Price")
 
-# Plot the 20 day moving average
+# Plot 20-day moving average line
 plt.plot(data.index, data["MA20"], label="20 Day Moving Avg")
 
-# Plot the 50 day moving average
+# Plot 50-day moving average line
 plt.plot(data.index, data["MA50"], label="50 Day Moving Avg")
 
-# Add chart title
+
+# Add price numbers on the graph every 5 data points
+for i in range(0, len(data), 5):
+
+    # Get the price at that index
+    price = float(data["Close"].iloc[i])
+
+    # Get the corresponding date
+    date = data.index[i]
+
+    # Display the price value on the graph
+    plt.text(date, price, str(round(price,2)), fontsize=8)
+
+
+# Get the latest date in the dataset
+latest_date = data.index[-1]
+
+# Display the latest stock price label on the graph
+plt.text(latest_date, latest_price,
+         "Latest: " + str(round(latest_price,2)),
+         fontsize=10)
+
+
+# Add graph title
 plt.title("Stock Trend Analysis for " + ticker_symbol)
 
-# Label the x-axis
+# Label x-axis as Date
 plt.xlabel("Date")
 
-# Label the y-axis
+# Label y-axis as Stock Price
 plt.ylabel("Stock Price")
 
-# Show the legend explaining each line
+# Show legend explaining each line
 plt.legend()
 
-# Display the chart
-plt.show()
+# Display the final graph
 plt.show()

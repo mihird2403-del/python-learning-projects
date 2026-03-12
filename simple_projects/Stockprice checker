@@ -1,7 +1,114 @@
+# Import library to fetch stock market data
 import yfinance as yf
 
-stock = yf.Ticker("AAPL")
+# Import library to create charts and visualizations
+import matplotlib.pyplot as plt
 
-data = stock.history(period="1d")
+# Import pandas for data analysis and calculations
+import pandas as pd
 
-print(data)
+
+# Define the stock symbol we want to analyze
+ticker_symbol = "NVDA"
+
+# Create a stock object from yfinance
+stock = yf.Ticker(ticker_symbol)
+
+# Download historical stock data for the last 3 months
+data = stock.history(period="3mo")
+
+# Print the first few rows of the dataset
+print("\nStock Data Sample:\n", data.head())
+
+
+# Extract the closing prices column
+closing_prices = data["Close"]
+
+# Calculate the first price in the dataset
+first_price = closing_prices.iloc[0]
+
+# Calculate the most recent price
+latest_price = closing_prices.iloc[-1]
+
+# Calculate the absolute price change
+price_change = latest_price - first_price
+
+# Calculate percentage change over the period
+percent_change = (price_change / first_price) * 100
+
+
+# Find the highest price in the dataset
+highest_price = data["High"].max()
+
+# Find the lowest price in the dataset
+lowest_price = data["Low"].min()
+
+# Calculate average closing price
+average_price = closing_prices.mean()
+
+# Calculate standard deviation to measure volatility
+volatility = closing_prices.std()
+
+
+# Print a summary report of the stock analysis
+print("\n--- STOCK ANALYSIS REPORT ---")
+
+# Display the stock ticker symbol
+print("Stock:", ticker_symbol)
+
+# Display the latest stock price
+print("Latest Price:", round(latest_price,2))
+
+# Display the price change during the selected period
+print("Price Change:", round(price_change,2))
+
+# Display percentage price movement
+print("Percent Change:", round(percent_change,2), "%")
+
+# Display the highest recorded price
+print("Highest Price:", round(highest_price,2))
+
+# Display the lowest recorded price
+print("Lowest Price:", round(lowest_price,2))
+
+# Display the average closing price
+print("Average Closing Price:", round(average_price,2))
+
+# Display stock volatility
+print("Volatility (Std Dev):", round(volatility,2))
+
+
+# Calculate a 20-day moving average for trend analysis
+data["MA20"] = closing_prices.rolling(window=20).mean()
+
+# Calculate a 50-day moving average for long-term trend
+data["MA50"] = closing_prices.rolling(window=50).mean()
+
+
+# Create a chart showing stock prices and moving averages
+plt.figure(figsize=(10,5))
+
+# Plot the actual closing prices
+plt.plot(data.index, data["Close"], label="Close Price")
+
+# Plot the 20 day moving average
+plt.plot(data.index, data["MA20"], label="20 Day Moving Avg")
+
+# Plot the 50 day moving average
+plt.plot(data.index, data["MA50"], label="50 Day Moving Avg")
+
+# Add chart title
+plt.title("Stock Trend Analysis for " + ticker_symbol)
+
+# Label the x-axis
+plt.xlabel("Date")
+
+# Label the y-axis
+plt.ylabel("Stock Price")
+
+# Show the legend explaining each line
+plt.legend()
+
+# Display the chart
+plt.show()
+plt.show()

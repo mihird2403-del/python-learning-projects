@@ -1,0 +1,71 @@
+!pip install --quiet google-api-python-client yt-dlp
+from IPython.display import display, HTML
+from googleapiclient.discovery import build
+import yt_dlp
+
+API_KEY = "YOUR_API_KEY"  # Replace with your key
+youtube = build('youtube', 'v3', developerKey=API_KEY)
+
+# Search YouTube (only videos)
+def youtube_search(query, max_results=5):
+    req = youtube.search().list(
+        q=query,
+        part='snippet',
+        type='video',  # ensures only videos
+        maxResults=max_results
+    )
+    res = req.execute()
+    results = []
+    for item in res.get('items', []):
+        if 'videoId' in item['id']:
+            title = item['snippet']['title']
+            video_id = item['id']['videoId']
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            results.append((title, url))
+    return results
+
+# Get direct audio stream URL (no download)
+def get_audio_url(youtube_url):
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'noplaylist': True,
+        'skip_download': True
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(youtube_url, download=False)
+        return info['url']
+
+# Stream audio in Colab
+def stream_audio(audio_url, title):
+    display(HTML(f"<h4>Now Playing: {title}</h4>"))
+    display(HTML(f"""
+    <audio controls autoplay>
+      <source src="{audio_url}" type="audio/webm">
+      Your browser does not support the audio element.
+    </audio>
+    """))
+
+# Step 1: Get search query
+search_query = input("Enter the song or artist to search: ")
+
+# Step 2: Search YouTube
+results = youtube_search(search_query, max_results=5)
+
+if not results:
+    print("No video results found. Try a different search term.")
+else:
+    # Step 3: Show results
+    print("\nTop Results:")
+    for i, (title, _) in enumerate(results):
+        print(f"{i+1}. {title}")
+
+    # Step 4: Let user select
+    selection = int(input("\nEnter the number of the song you want to play: ")) - 1
+    if 0 <= selection < len(results):
+        title, url = results[selection]
+        audio_url = get_audio_url(url)
+        # Step 5: Stream audio
+        stream_audio(audio_url, title)
+    else:
+        print("Invalid selection. Try again.")

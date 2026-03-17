@@ -1,0 +1,178 @@
+import { useState, useCallback } from "react";
+import { Music } from "lucide-react";
+import SearchBar from "@/components/SearchBar";
+import SongList from "@/components/SongList";
+import Player from "@/components/Player";
+import PlaylistPanel from "@/components/PlaylistPanel";
+import AddToPlaylistDialog from "@/components/AddToPlaylistDialog";
+import { useYouTubePlayer } from "@/hooks/useYouTubePlayer";
+import { usePlaylists, type Song } from "@/hooks/usePlaylists";
+import { searchYouTube, type SearchResult, getApiKey, setApiKey } from "@/lib/youtube-api";
+import { toast } from "sonner";
+
+type Tab = "search" | "playlists";
+
+export default function Index() {
+  const [tab, setTab] = useState<Tab>("search");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [currentSong, setCurrentSong] = useState<SearchResult | null>(null);
+  const [addSong, setAddSong] = useState<SearchResult | null>(null);
+  const [apiKey, setApiKeyState] = useState(getApiKey);
+
+  const player = useYouTubePlayer();
+  const { playlists, createPlaylist, addSongToPlaylist, removeSongFromPlaylist, deletePlaylist } = usePlaylists();
+
+  const handleSearch = useCallback(async (query: string) => {
+    if (!apiKey) {
+      toast.error("Please set your YouTube API key in Settings (gear icon)");
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await searchYouTube(query);
+      setResults(res);
+      setTab("search");
+    } catch {
+      toast.error("Search failed. Check your API key.");
+    } finally {
+      setIsSearching(false);
+    }
+  }, [apiKey]);
+
+  const handlePlay = useCallback((song: SearchResult) => {
+    setCurrentSong(song);
+    player.play(song.id);
+  }, [player]);
+
+  const handleAddToPlaylist = useCallback((song: SearchResult) => {
+    if (playlists.length === 1) {
+      addSongToPlaylist(playlists[0].id, song as Song);
+      toast.success(`Added to "${playlists[0].name}"`);
+    } else {
+      setAddSong(song);
+    }
+  }, [playlists, addSongToPlaylist]);
+
+  const handleSelectPlaylist = useCallback((playlistId: string) => {
+    if (addSong) {
+      addSongToPlaylist(playlistId, addSong as Song);
+      const pl = playlists.find((p) => p.id === playlistId);
+      toast.success(`Added to "${pl?.name}"`);
+      setAddSong(null);
+    }
+  }, [addSong, addSongToPlaylist, playlists]);
+
+  const handleCreateAndAdd = useCallback((name: string) => {
+    const pl = createPlaylist(name);
+    if (addSong) {
+      addSongToPlaylist(pl.id, addSong as Song);
+      toast.success(`Created "${name}" and added song!`);
+      setAddSong(null);
+    }
+  }, [addSong, createPlaylist, addSongToPlaylist]);
+
+  const handleImport = useCallback((songs: SearchResult[], name: string) => {
+    const pl = createPlaylist(name);
+    songs.forEach((s) => addSongToPlaylist(pl.id, s as Song));
+  }, [createPlaylist, addSongToPlaylist]);
+
+  const handleApiKeyChange = useCallback((key: string) => {
+    setApiKey(key);
+    setApiKeyState(key);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-background pb-24">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
+        <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Music className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <h1 className="text-lg font-bold text-foreground">SoundFlow</h1>
+          </div>
+          <SearchBar onSearch={handleSearch} isLoading={isSearching} />
+          {/* Tabs */}
+          <div className="flex gap-1 bg-secondary rounded-full p-1 w-fit">
+            {(["search", "playlists"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  tab === t
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t === "search" ? "Search" : "Playlists"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="max-w-3xl mx-auto px-4 py-4">
+        {tab === "search" ? (
+          results.length > 0 ? (
+            <SongList
+              songs={results}
+              currentId={player.currentVideoId}
+              onPlay={handlePlay}
+              onAddToPlaylist={handleAddToPlaylist}
+            />
+          ) : (
+            <div className="text-center py-20">
+              <Music className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground">Search for your favorite songs</p>
+              {!apiKey && (
+                <p className="text-sm text-primary mt-2">
+                  Tap the ⚙️ icon in Playlists tab to set your API key first
+                </p>
+              )}
+            </div>
+          )
+        ) : (
+          <PlaylistPanel
+            playlists={playlists}
+            currentId={player.currentVideoId}
+            onPlay={handlePlay}
+            onDelete={deletePlaylist}
+            onRemoveSong={removeSongFromPlaylist}
+            onImport={handleImport}
+            apiKey={apiKey}
+            onApiKeyChange={handleApiKeyChange}
+          />
+        )}
+      </main>
+
+      {/* Player */}
+      <Player
+        containerRef={player.containerRef}
+        isPlaying={player.isPlaying}
+        currentTime={player.currentTime}
+        duration={player.duration}
+        currentSong={currentSong}
+        onTogglePlay={player.togglePlay}
+        onSkipForward={player.skipForward}
+        onSkipBackward={player.skipBackward}
+        onSeek={player.seekTo}
+        onAddToPlaylist={() => currentSong && handleAddToPlaylist(currentSong)}
+      />
+
+      {/* Add to playlist dialog */}
+      <AddToPlaylistDialog
+        open={!!addSong}
+        onClose={() => setAddSong(null)}
+        playlists={playlists}
+        onSelect={handleSelectPlaylist}
+        onCreate={handleCreateAndAdd}
+      />
+    </div>
+  );
+}
+
+
+#This project was made using Loveable app and uses persoal Youtube API Keys to host go to google cloud console and create your own APIs to enjoy Unlimited listening to songs 
